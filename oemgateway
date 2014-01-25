@@ -238,7 +238,8 @@ if __name__ == "__main__":
         try:
             gateway = OemGateway(interface)
         except Exception as e:
-            sys.exit("Could not start OemGateway: " + str(e))
+            sys.exit("Could not "
+                     "start OemGateway: " + str(e))
         else:
             gateway.run()
             # When done, close gateway

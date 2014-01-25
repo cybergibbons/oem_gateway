@@ -11,6 +11,7 @@ import serial
 import time, datetime
 import logging
 import socket, select
+import os
 
 """class OemGatewayListener
 
@@ -325,6 +326,102 @@ class OemGatewayRFM2PiListener(OemGatewaySerialListener):
         self._log.debug("Broadcasting time: %d:%d" % (now.hour, now.minute))
 
         self._ser.write("00,%02d,%02d,00,s" % (now.hour, now.minute))
+
+class OemGatewayOWFSListener(OemGatewayListener):
+
+    def __init__(self, **kwargs):
+
+        super(OemGatewayOWFSListener, self).__init__()
+
+        # Default OWFS path
+        self._path = '/mnt/1wire'
+
+        # emonTX defaults to 10
+        # 0 reserved
+        # 1-4 control nodes
+        # 5-10 energy monitoring nodes
+        # 11-14 unassigned
+        # 15-16 base station nodes
+        # 17-30 environmental sensing nodes
+        # 31 reserved
+        self._node = '9'
+
+        # temperature nodes send every minute
+        self._interval = 60
+
+        # how many bits of resolution should we read DS18B20
+        self._resolution = 9
+
+        for key, value in kwargs.iteritems():
+            if key == 'path':
+                self._path = value
+
+            if key == 'node':
+                self._node = int(value)
+
+            if key == 'interval':
+                self._interval = int(value)
+
+            if key == 'resolution':
+                if int(value) in [9, 10, 11, 12]:
+                    self._resolution = int(value)
+                else:
+                    raise OemGatewayListenerInitError('Resolution must be 9, 10, 11 or 12')
+
+        self._read_timestamp = 0
+
+        self._sensors = []
+
+        self._log.info('Initialising OWFS listener in %s', self._path)
+        self._log.info('Node ID: %s sending every %ss', self._node, self._interval)
+
+    def set(self, **kwargs):
+        self._sensors = []
+        for key, value in kwargs.iteritems():
+            if key.startswith('sensor'):
+                self._sensors.append(value)
+
+        self._log.info('Added %s sensors', len(self._sensors))
+
+        for sensor_id in self._sensors:
+            self._log.debug('Sensor ID: %s', sensor_id)
+
+    def read(self):
+
+        now = time.time()
+
+        if now - self._read_timestamp > self._interval:
+            self._log.info('Reading OWFS sensors')
+
+            self._read_timestamp = now
+
+            received = [self._node]
+
+            for sensor_id in self._sensors:
+                temperature = 0
+                self._log.debug('Reading %s', sensor_id)
+                if sensor_id in os.listdir(self._path):
+
+                    path = os.path.join(self._path, sensor_id, 'temperature' + str(self._resolution))
+
+                    try:
+                        f = open(path)
+                        temperature = f.readline().strip()
+                        f.close()
+                    except IOError:
+                        self._log.warning('Unable to open temperature file for %s', sensor_id)
+
+                    self._log.debug('Read %sC from %s', temperature, sensor_id)
+
+                else:
+                    self._log.debug('Unable to find %s', sensor_id)
+
+                received.append(temperature)
+
+            return received
+
+        return
+
 
 """class OemGatewaySocketListener
 
