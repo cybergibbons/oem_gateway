@@ -19,7 +19,7 @@ from configobj import ConfigObj
 User interface to communicate with the gateway.
 
 The settings attribute stores the settings of the gateway. It is a
-dictionnary with the following keys:
+dictionary with the following keys:
 
         'gateway': a dictionary containing the gateway settings
         'listeners': a dictionary containing the listeners
