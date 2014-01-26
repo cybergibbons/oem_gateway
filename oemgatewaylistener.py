@@ -384,9 +384,10 @@ class OemGatewayOWFSListener(OemGatewayListener):
 
     def set(self, **kwargs):
         self._sensors = []
-        for key, value in kwargs.iteritems():
+        # Sort by the key and then add to a list
+        for key in sorted(kwargs.iterkeys()):
             if key.startswith('sensor'):
-                self._sensors.append(value)
+                self._sensors.append(kwargs[key])
 
         self._log.info('Added %s sensors', len(self._sensors))
 
