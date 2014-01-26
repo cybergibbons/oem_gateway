@@ -354,10 +354,17 @@ class OemGatewayOWFSListener(OemGatewayListener):
 
         for key, value in kwargs.iteritems():
             if key == 'path':
-                self._path = value
+                if os.access(value, os.R_OK):
+                    self._path = value
+                else:
+                    raise OemGatewayListenerInitError('OWFS path not valid')
 
             if key == 'node':
-                self._node = int(value)
+                node = int(value)
+                if 0 < node < 31:
+                    self._node = node
+                else:
+                    raise OemGatewayListenerInitError('Node must be between 1 and 30')
 
             if key == 'interval':
                 self._interval = int(value)
@@ -398,23 +405,31 @@ class OemGatewayOWFSListener(OemGatewayListener):
             received = [self._node]
 
             for sensor_id in self._sensors:
-                temperature = 0
-                self._log.debug('Reading %s', sensor_id)
-                if sensor_id in os.listdir(self._path):
+                temperature = None
 
-                    path = os.path.join(self._path, sensor_id, 'temperature' + str(self._resolution))
+                if sensor_id.lower() != 'dummy':
+                    # A real sensor ID
+                    self._log.debug('Reading %s', sensor_id)
 
-                    try:
-                        f = open(path)
-                        temperature = f.readline().strip()
-                        f.close()
-                    except IOError:
-                        self._log.warning('Unable to open temperature file for %s', sensor_id)
+                    if sensor_id in os.listdir(self._path):
 
-                    self._log.debug('Read %sC from %s', temperature, sensor_id)
+                        path = os.path.join(self._path, sensor_id, 'temperature' + str(self._resolution))
+
+                        try:
+                            f = open(path)
+                            temperature = f.readline().strip()
+                            f.close()
+                        except IOError:
+                            self._log.warning('Unable to open temperature file for %s', sensor_id)
+
+                        self._log.debug('Read %sC from %s', temperature, sensor_id)
+
+                    else:
+                        self._log.debug('Unable to find %s', sensor_id)
 
                 else:
-                    self._log.debug('Unable to find %s', sensor_id)
+                    # Allow dummy sensor IDs
+                    self._log.debug('Skipping dummy sensor')
 
                 received.append(temperature)
 
