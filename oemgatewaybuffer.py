@@ -120,8 +120,10 @@ class OemGatewayEmoncmsBuffer(OemGatewayBuffer):
         # Data
         data_string += '&json={'
         for i, val in enumerate(data[1:]):
-            data_string += str(i+1) + ':' + str(val)
-            data_string += ','
+            # Do not report inputs with no value
+            if val is not None:
+                data_string += str(i+1) + ':' + str(val)
+                data_string += ','
         # Remove trailing comma and close braces
         data_string = data_string[0:-1]+'}'
         self._log.debug("Data string: " + data_string)
