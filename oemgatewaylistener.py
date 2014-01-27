@@ -384,7 +384,7 @@ class OemGatewayOWFSListener(OemGatewayListener):
 
     def set(self, **kwargs):
         self._sensors = []
-        # Sort by the key and then add to a list
+        # Sort by the key ('sensorX') and then add to a list
         for key in sorted(kwargs.iterkeys()):
             if key.startswith('sensor'):
                 self._sensors.append(kwargs[key])
@@ -399,7 +399,7 @@ class OemGatewayOWFSListener(OemGatewayListener):
         now = time.time()
 
         if now - self._read_timestamp > self._interval:
-            self._log.info('Reading OWFS sensors')
+            self._log.info('Reading OWFS in %s', self._path)
 
             self._read_timestamp = now
 
@@ -408,9 +408,10 @@ class OemGatewayOWFSListener(OemGatewayListener):
             for sensor_id in self._sensors:
                 temperature = None
 
+                # We allow dummy sensors - this means that indexing of real sensors is preserved
                 if sensor_id.lower() != 'dummy':
                     # A real sensor ID
-                    self._log.debug('Reading %s', sensor_id)
+                    self._log.debug('%s reading', sensor_id)
 
                     if sensor_id in os.listdir(self._path):
 
@@ -421,17 +422,18 @@ class OemGatewayOWFSListener(OemGatewayListener):
                             temperature = f.readline().strip()
                             f.close()
                         except IOError:
-                            self._log.warning('Unable to open temperature file for %s', sensor_id)
+                            self._log.warning('%s unable to read temperature', sensor_id)
 
-                        self._log.debug('Read %sC from %s', temperature, sensor_id)
+                        self._log.debug('%s read %sC', sensor_id, temperature)
 
                     else:
-                        self._log.debug('Unable to find %s', sensor_id)
+                        self._log.debug('%s sensor does not exist', sensor_id)
 
                 else:
                     # Allow dummy sensor IDs
                     self._log.debug('Skipping dummy sensor')
 
+                # Return as a list of temperatures where dummy or unreadable = None
                 received.append(temperature)
 
             return received
